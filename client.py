@@ -1,6 +1,7 @@
 import socket
 import sys
 import os
+import time
 
 class TCPClient:
     def __init__(self):
@@ -17,7 +18,7 @@ class TCPClient:
             print(err)
             sys.exit(1)
         
-        filepath = input('Type in a file to upload')
+        filepath = input('Type in a file to upload: ')
 
         try:
             # start sending data to server
@@ -29,14 +30,19 @@ class TCPClient:
                 if filesize > pow(2, 32):
                     raise Exception ('File must be below 4GB')
                 
-                filename = os.path.basename(f.name)
+                # sending filesize
+                filesize_byte = filesize.to_bytes(32, "big")
+                self.sock.send(filesize_byte)
+                
+                # filename = os.path.basename(f.name)
 
                 data = f.read(1400)
                 while data:
+                    #time.sleep(1)
                     print('sending')
                     self.sock.send(data)
                     data = f.read(1400)
-                
+
 
         finally:
             print('Closing socket')
