@@ -19,20 +19,40 @@ class TCPServer:
         return
 
     # change aspect
-    def change_aspect():
-        
+    def change_aspect(self, inputfile, option):
+        ratios = {
+            1: '16:9',
+            2: '4:3',
+            3: '1:1',
+            4: '16:10',
+            5: '5:4',
+        }
+
+        outputfile = 'output.mp4'
+        ffmpeg.input(inputfile).output(outputfile, aspect=ratios[option]).run()
         return
 
     # change resolution
-    def change_resolution():
+    def change_resolution(self, inputfile, option):
+        resolutions = {
+            1: '1280x720',
+            2: '1920x1080',
+            3: '3840x2160'
+        }
+        outputfile = 'output.mp4'
+        ffmpeg.input(inputfile).output(outputfile, s=resolutions[option]).run()
         return
     
     # compress mp4
-    def compress():
+    def compress(self, inputfile):
+        outputfile = 'output.mp4'
+        ffmpeg.input(inputfile).output(outputfile, vcodec='libx264', crf=28).run()
         return
     
     # convert mp4 to gif in selected range
-    def convert_to_gif():
+    def convert_to_gif(self, input_file, start_time, duration):
+        output_gif = 'output.gif'
+        ffmpeg.input(input_file, ss=start_time, t=duration).filter('fps', fps=10).output(output_gif).run()
         return
     
     def start(self):
@@ -77,8 +97,15 @@ class TCPServer:
             #self.sock.send(responce)
             
             
-            # self.convert_into_mp3(os.path.join(path, filename))
-            self.convert_into_mp3('sample.mp4')
+            # for i in range(1, 6):
+            #     self.change_aspect('sample.mp4', i)
+            #self.convert_into_mp3('sample.mp4')
+            # aspect_ratio = 
+            #self.change_aspect('sample.mp4', aspect_ration)
+            
+            # self.change_resolution('sample.mp4', 3)
+            # self.compress('sample.mp4')
+            self.convert_to_gif('sample.mp4', 12, 5)
 
 
         except Exception as e:
