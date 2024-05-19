@@ -1,6 +1,6 @@
 import socket
 import os
-import time
+import ffmpeg
 
 class TCPServer:
     def __init__(self):
@@ -9,9 +9,32 @@ class TCPServer:
         self.server_port = 9001
         self.sock.bind((self.server_address, self.server_port))
 
-    def protocol_responce():
-        return 
+    def protocol_responce(self, state, message):
+        return state.to_bytes(2, "big") + len(message.encode('utf-8')).to_bytes(2, "big") + message.encode('utf-8')
+    
+    # make mp3 file from mp4
+    def convert_into_mp3(self, inputfile):
+        outputfile = 'output.mp3'
+        ffmpeg.input(inputfile).output(outputfile, format='mp3').run()
+        return
 
+    # change aspect
+    def change_aspect():
+        
+        return
+
+    # change resolution
+    def change_resolution():
+        return
+    
+    # compress mp4
+    def compress():
+        return
+    
+    # convert mp4 to gif in selected range
+    def convert_to_gif():
+        return
+    
     def start(self):
         self.sock.listen(1)
 
@@ -43,14 +66,19 @@ class TCPServer:
             print('finished downloading the file from client')
 
             # try this with http status code
-            status_codes = {
-
+            status_message = {
+                200: 'ok'
             }
-            
+
             # return responce. 16 bytes message that includes status code
-            state = 0
-            responce = ''
+            state = 200
+            message = status_message[state]
+            responce = self.protocol_responce(state, message)
+            #self.sock.send(responce)
             
+            
+            # self.convert_into_mp3(os.path.join(path, filename))
+            self.convert_into_mp3('sample.mp4')
 
 
         except Exception as e:
@@ -59,6 +87,8 @@ class TCPServer:
         finally:
             print('Closing current connection')
             connection.close()
+
+
 
 tcp_server = TCPServer()
 tcp_server.start()
