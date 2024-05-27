@@ -1,6 +1,7 @@
 import socket
 import os
 import ffmpeg
+import json
 
 class TCPServer:
     def __init__(self):
@@ -9,11 +10,23 @@ class TCPServer:
         self.server_port = 9001
         self.sock.bind((self.server_address, self.server_port))
 
+    # same protocol as client
+    def protocol_header(self, json_size, media_type_size, data):
+        return json_size.to_bytes(16, "big") + media_type_size.to_bytes(1, "big") + data
+
+    # headerのバイトを数字に変更
+    def decode_header(self, header):
+        print('header[:16]: {}'.format(int.from_bytes(header[:16], "big")))
+        print('header[16:17]: {}'.format(int.from_bytes(header[16:17], "big")))
+        print('header[17:64]: {}'.format(int.from_bytes(header[17:64], "big")))
+        return int.from_bytes(header[:16], "big"), int.from_bytes(header[16:17], "big"), int.from_bytes(header[17:64], "big")
+    
+
     def protocol_responce(self, state, message):
         return state.to_bytes(2, "big") + len(message.encode('utf-8')).to_bytes(2, "big") + message.encode('utf-8')
     
     # make mp3 file from mp4
-    def convert_into_mp3(self, inputfile):
+    def convert_to_mp3(self, inputfile):
         outputfile = 'output.mp3'
         ffmpeg.input(inputfile).output(outputfile, format='mp3').run()
         return
@@ -55,6 +68,7 @@ class TCPServer:
         ffmpeg.input(input_file, ss=start_time, t=duration).filter('fps', fps=10).output(output_gif).run()
         return
     
+
     def start(self):
         self.sock.listen(1)
 
@@ -66,24 +80,41 @@ class TCPServer:
             if not os.path.exists(path):
                 os.makedirs(path)
 
-            # receive data
-
-            
             connection, client_address = self.sock.accept()
-            # 32 bytes of filelength
-            file_size = int.from_bytes(connection.recv(32), "big")
-            filename = 'video.mp4'
+            print('connection accepted')
+            filename = 'temp.mp4'
+
+            # headerのデータを受信する
+            header = connection.recv(64)
+            print('header received')
+             # headerからデータを取得
+
+            json_size, media_type_size, pay_load_size = self.decode_header(header)
+   
+
+            # bodyのデータを受信する
+            body = b''
+            data = connection.recv(1400)
+            while data:
+                body += data
+                print('received {} bytes'.format(len(data)))
+                data = connection.recv(1400)
+            print('finished downloading the file from client')
+            
+            # bodyからデータを取得
+            # json_data_byte + media_type_byte + mp4_data_byte
+            media_type_end = json_size + media_type_size
+            payload_end = media_type_end + pay_load_size
+
+            json_data_string = body[:json_size].decode('utf-8')
+            json_data = json.loads(json_data_string)
+            media_type = body[json_size: media_type_end].decode('utf-8')
+            payload = body[media_type_end: payload_end]
+
+            # payloadだけファイルに保存する
             # open file to copy data to
             with open(os.path.join(path, filename), "wb+") as f:
-             # receive data by 1400 bytes
-                while file_size > 0:
-                    #time.sleep(1)
-                    data = connection.recv(1400)
-                    f.write(data)
-                    print('received {} bytes'.format(len(data)))
-                    file_size -= len(data)
-                    print('{} bytes left'.format(file_size))
-            print('finished downloading the file from client')
+                f.write(payload)
 
             # try this with http status code
             status_message = {
@@ -94,19 +125,32 @@ class TCPServer:
             state = 200
             message = status_message[state]
             responce = self.protocol_responce(state, message)
-            #self.sock.send(responce)
-            
-            
-            # for i in range(1, 6):
-            #     self.change_aspect('sample.mp4', i)
-            #self.convert_into_mp3('sample.mp4')
-            # aspect_ratio = 
-            #self.change_aspect('sample.mp4', aspect_ration)
-            
-            # self.change_resolution('sample.mp4', 3)
-            # self.compress('sample.mp4')
-            self.convert_to_gif('sample.mp4', 12, 5)
+    
+            # functions = {
+            #     1: self.compress,
+            #     2: self.change_resolution,
+            #     3: self.change_aspect,
+            #     4: self.convert_to_mp3,
+            #     5: self.convert_to_gif
+            # }
 
+            func_index = json_data['func_index']
+            target_file = os.path.join(path, filename)
+            # どうやって関数に引数を渡す？　FUNC_INDEXごとに入力変える
+            if func_index == 1:
+                self.compress(target_file)
+            elif func_index == 2:
+                option = json_data['option']
+                self.change_resolution(target_file, option)
+            elif func_index == 3:
+                option = json_data['option']
+                self.change_aspect(target_file, option)
+            elif func_index == 4:
+                self.convert_to_mp3(target_file)
+            elif func_index == 5:
+                start_time = json_data['start_time']
+                duration = json_data['duration']
+                self.convert_to_gif(target_file, start_time, duration)
 
         except Exception as e:
             print('error: ' + str(e))
