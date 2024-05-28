@@ -9,6 +9,7 @@ class TCPServer:
         self.server_address = '0.0.0.0'
         self.server_port = 9001
         self.sock.bind((self.server_address, self.server_port))
+        self.folder_path = 'server'
 
     # same protocol as client
     def protocol_header(self, json_size, media_type_size, data):
@@ -27,7 +28,8 @@ class TCPServer:
     
     # make mp3 file from mp4
     def convert_to_mp3(self, inputfile):
-        outputfile = 'output.mp3'
+        file_name = 'output.mp3'
+        outputfile = os.path.join(self.folder_path, file_name) 
         ffmpeg.input(inputfile).output(outputfile, format='mp3').run()
         return
 
@@ -41,7 +43,8 @@ class TCPServer:
             5: '5:4',
         }
 
-        outputfile = 'output.mp4'
+        file_name = 'output.mp4'
+        outputfile = os.path.join(self.folder_path, file_name) 
         ffmpeg.input(inputfile).output(outputfile, aspect=ratios[option]).run()
         return
 
@@ -52,20 +55,23 @@ class TCPServer:
             2: '1920x1080',
             3: '3840x2160'
         }
-        outputfile = 'output.mp4'
+        file_name = 'output.mp4'
+        outputfile = os.path.join(self.folder_path, file_name) 
         ffmpeg.input(inputfile).output(outputfile, s=resolutions[option]).run()
         return
     
     # compress mp4
     def compress(self, inputfile):
-        outputfile = 'output.mp4'
+        file_name = 'output.mp4'
+        outputfile = os.path.join(self.folder_path, file_name) 
         ffmpeg.input(inputfile).output(outputfile, vcodec='libx264', crf=28).run()
         return
     
     # convert mp4 to gif in selected range
     def convert_to_gif(self, input_file, start_time, duration):
-        output_gif = 'output.gif'
-        ffmpeg.input(input_file, ss=start_time, t=duration).filter('fps', fps=10).output(output_gif).run()
+        file_name = 'output.gif'
+        outputfile = os.path.join(self.folder_path, file_name) 
+        ffmpeg.input(input_file, ss=start_time, t=duration).filter('fps', fps=10).output(outputfile).run()
         return
     
 
@@ -76,9 +82,9 @@ class TCPServer:
             print('Starting up on {} port {}'.format(self.server_address, self.server_port))
 
             # make directory to save file
-            path = 'storage'
-            if not os.path.exists(path):
-                os.makedirs(path)
+            
+            if not os.path.exists(self.folder_path):
+                os.makedirs(self.folder_path)
 
             connection, client_address = self.sock.accept()
             print('connection accepted')
@@ -113,7 +119,7 @@ class TCPServer:
 
             # payloadだけファイルに保存する
             # open file to copy data to
-            with open(os.path.join(path, filename), "wb+") as f:
+            with open(os.path.join(self.folder_path, filename), "wb+") as f:
                 f.write(payload)
 
             # try this with http status code
@@ -135,7 +141,7 @@ class TCPServer:
             # }
 
             func_index = json_data['func_index']
-            target_file = os.path.join(path, filename)
+            target_file = os.path.join(self.folder_path, filename)
             # どうやって関数に引数を渡す？　FUNC_INDEXごとに入力変える
             if func_index == 1:
                 self.compress(target_file)
@@ -151,6 +157,7 @@ class TCPServer:
                 start_time = json_data['start_time']
                 duration = json_data['duration']
                 self.convert_to_gif(target_file, start_time, duration)
+
 
         except Exception as e:
             print('error: ' + str(e))
