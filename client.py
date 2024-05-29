@@ -9,15 +9,18 @@ class TCPClient:
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.server_address = input('Type in a server address to connect to: ')
         self.server_port = 9001
-    
+        self.folder_path = 'client'
+
     # same protocol as client
     def protocol_header(self, json_size, media_type_size, payload_size):
-        print(json_size.to_bytes(16, "big"))
         return json_size.to_bytes(16, "big") + media_type_size.to_bytes(1, "big") + payload_size.to_bytes(47, "big")
 
-    def protocol_body(self):
-
-        return
+    # headerのバイトを数字に変更
+    def decode_header(self, header):
+        # print('header[:16]: {}'.format(int.from_bytes(header[:16], "big")))
+        # print('header[16:17]: {}'.format(int.from_bytes(header[16:17], "big")))
+        # print('header[17:64]: {}'.format(int.from_bytes(header[17:64], "big")))
+        return int.from_bytes(header[:16], "big"), int.from_bytes(header[16:17], "big"), int.from_bytes(header[17:64], "big")
     
     def make_json_data(self):
         # set parameters
@@ -88,7 +91,6 @@ class TCPClient:
         
         filepath = input('Type in a file to upload: ')
         media_type_byte = os.path.splitext(filepath)[1][1:].encode('utf-8')
-        print(media_type_byte)
         try:
             # start sending data to server
             with open(filepath, 'rb') as f:
@@ -114,12 +116,65 @@ class TCPClient:
                 chunk_size = 1400
                 i = 0
                 data = body[i:i + chunk_size]
+                print('Sending data to server...')
                 while data:
                     #time.sleep(1)
-                    print('Sending...')
+                    
                     self.sock.send(data)
                     i += chunk_size
                     data = body[i:i + chunk_size]
+                print('Finished sending')
+                
+        except Exception as e:
+            print('error: ' + str(e))
+            print('Closing socket')
+            self.sock.close()
+            exit()
+
+        # 処理したファイルを受け取る
+        try:
+            #headerを受信
+            header = self.sock.recv(64)
+            # decodeする
+            json_size, media_type_size, payload_size = self.decode_header(header)
+            # print('json_size: {}'.format(json_size))
+            # print('media_type_size: {}'.format(media_type_size))
+            # print('payload_size: {}'.format(payload_size))
+
+            body = b''
+            data = self.sock.recv(1400)
+            print('Receiving data from server...')
+            while data:
+                body += data
+                
+                data = self.sock.recv(1400)
+            print('Finished receiving data from server')
+            
+            media_type_end = json_size + media_type_size
+            payload_end = media_type_end + payload_size
+
+            json_data_string = body[:json_size].decode('utf-8')
+            json_data = json.loads(json_data_string)
+            
+            media_type = body[json_size: media_type_end].decode('utf-8')
+            payload = body[media_type_end: payload_end]
+            
+            if not os.path.exists(self.folder_path):
+                os.makedirs(self.folder_path)
+            
+            file_name = 'output.' + media_type
+            
+            with open(os.path.join(self.folder_path, file_name), "wb+") as f:
+                f.write(payload)
+
+            if json_data['status'] == 'NG':
+                print('Error occured')
+                print(json_data['error'])
+            else:
+                print('processing completed')
+
+        except Exception as e:
+            print('error: ' + str(e))
 
         finally:
             print('Closing socket')
