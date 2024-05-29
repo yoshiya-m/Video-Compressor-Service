@@ -107,7 +107,6 @@ class TCPServer:
             print('finished downloading the file from client')
             
             # bodyからデータを取得
-            # json_data_byte + media_type_byte + mp4_data_byte
             media_type_end = json_size + media_type_size
             payload_end = media_type_end + pay_load_size
 
@@ -116,18 +115,9 @@ class TCPServer:
             media_type = body[json_size: media_type_end].decode('utf-8')
             payload = body[media_type_end: payload_end]
 
-            # payloadだけファイルに保存する
-            # open file to copy data to
+            # payloadをファイルに保存する
             with open(os.path.join(self.folder_path, input_filename), "wb+") as f:
                 f.write(payload)
-    
-            # functions = {
-            #     1: self.compress,
-            #     2: self.change_resolution,
-            #     3: self.change_aspect,
-            #     4: self.convert_to_mp3,
-            #     5: self.convert_to_gif
-            # }
 
             func_index = json_data['func_index']
             target_file = os.path.join(self.folder_path, input_filename)
@@ -159,7 +149,6 @@ class TCPServer:
         # 送り返す
         try:
             # 処理したファイルをクライアントと同じ方式で返す
-            # jsonデータ
             data = {
                 'status': 'OK'
             }
@@ -183,19 +172,14 @@ class TCPServer:
             
             # body
             body = json_byte_data + media_type_byte + payload_byte
-            # print('body size: {}'.format(len(body)))
-            # print('json_byte_size: {}'.format(len(json_byte_data)))
-            # print('media_type_byte: {}'.format(len(media_type_byte)))
-            # print('payload_byte: {}'.format(filesize))
 
-            # bodyの送信 json, media_type, mp4 
+
+            # bodyの送信
             chunk_size = 1400
             i = 0
             data = body[i:i + chunk_size]
             print('Sending data to client...')
             while data:
-                #time.sleep(1)
-
                 connection.send(data)
                 i += chunk_size
                 data = body[i:i + chunk_size]

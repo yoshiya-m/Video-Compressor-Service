@@ -17,21 +17,15 @@ class TCPClient:
 
     # headerのバイトを数字に変更
     def decode_header(self, header):
-        # print('header[:16]: {}'.format(int.from_bytes(header[:16], "big")))
-        # print('header[16:17]: {}'.format(int.from_bytes(header[16:17], "big")))
-        # print('header[17:64]: {}'.format(int.from_bytes(header[17:64], "big")))
         return int.from_bytes(header[:16], "big"), int.from_bytes(header[16:17], "big"), int.from_bytes(header[17:64], "big")
     
     def make_json_data(self):
-        # set parameters
-        # choose one option to execute
-        # func_index, inputfile_name, 
         data = {}
         print('-------機能一覧-------')
         print('1: 動画を圧縮する')
         print('2: 動画の解像度を変更する')
         print('3: 動画のアスペクト比を変更する')
-        print('4: 動画を音声に変更する')
+        print('4: 動画を音声に変換する')
         print('5: 動画からGIFを作成する')
         func_index = int(input('実行したい機能の番号を入力してください: '))
         while func_index not in [1, 2, 3, 4, 5]:
@@ -100,8 +94,7 @@ class TCPClient:
 
                 if filesize > pow(2, 32):
                     raise Exception ('File must be below 4GB')
-                
-                # filename = os.path.basename(f.name)
+
                 json_data_byte = self.make_json_data()
 
                 # headerの作成と送信
@@ -137,9 +130,6 @@ class TCPClient:
             header = self.sock.recv(64)
             # decodeする
             json_size, media_type_size, payload_size = self.decode_header(header)
-            # print('json_size: {}'.format(json_size))
-            # print('media_type_size: {}'.format(media_type_size))
-            # print('payload_size: {}'.format(payload_size))
 
             body = b''
             data = self.sock.recv(1400)
